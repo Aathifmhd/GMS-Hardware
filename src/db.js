@@ -7,24 +7,32 @@ const { Pool, types } = require('pg');
 types.setTypeParser(20, (v) => parseInt(v, 10)); // COUNT / bigint → number
 types.setTypeParser(1700, parseFloat);           // numeric → number
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is not set. Put your Neon connection string in .env (local) or in the Vercel project settings.');
-}
-
 const TZ = /^[A-Za-z_]+\/[A-Za-z_\/+-]+$/.test(process.env.APP_TIMEZONE || '') ? process.env.APP_TIMEZONE : 'Asia/Colombo';
 // Local "now" as 'YYYY-MM-DD HH24:MI:SS' text in the shop's timezone (server clocks are UTC on Vercel)
 const NOW = `to_char(now() AT TIME ZONE '${TZ}', 'YYYY-MM-DD HH24:MI:SS')`;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  max: process.env.VERCEL ? 5 : 10,
-  idleTimeoutMillis: 10000,
-});
+// Tolerate common paste mistakes in the dashboard: surrounding quotes/spaces or a leading "DATABASE_URL="
+const DATABASE_URL = String(process.env.DATABASE_URL || '').trim().replace(/^DATABASE_URL=/, '').replace(/^["']|["']$/g, '').trim();
+
+function configError() {
+  const e = new Error(DATABASE_URL
+    ? 'DATABASE_URL is not a valid postgresql:// connection string. Fix it in Vercel → Settings → Environment Variables, then redeploy.'
+    : 'DATABASE_URL is not set. Add your Neon connection string in Vercel → Settings → Environment Variables (or .env on this PC), then redeploy.');
+  e.status = 503;
+  e.expose = true;
+  return e;
+}
+
+// Created without a valid URL the app still starts, so every request can report what is wrong
+const pool = /^postgres(ql)?:\/\//.test(DATABASE_URL)
+  ? new Pool({ connectionString: DATABASE_URL, max: process.env.VERCEL ? 5 : 10, idleTimeoutMillis: 10000 })
+  : null;
 const txStore = new AsyncLocalStorage();
 
 // '?' placeholders → $1, $2 … so queries read the same as before
 const toPg = (sql) => { let i = 0; return sql.replace(/\?/g, () => '$' + ++i); };
 async function query(sql, params = []) {
+  if (!pool) throw configError();
   const client = txStore.getStore() || pool;
   return client.query(toPg(sql), params.map((p) => (p === undefined ? null : p)));
 }
@@ -33,12 +41,13 @@ const db = {
   all: async (sql, ...p) => (await query(sql, p)).rows,
   get: async (sql, ...p) => (await query(sql, p)).rows[0],
   run: async (sql, ...p) => { const r = await query(sql, p); return { changes: r.rowCount, id: r.rows[0]?.id }; },
-  exec: (sql) => (txStore.getStore() || pool).query(sql),
+  exec: (sql) => query(sql),
 };
 
 // Run fn inside one transaction; queries made by fn (and anything it awaits) use the same connection.
 async function tx(fn) {
   if (txStore.getStore()) return fn();
+  if (!pool) throw configError();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -251,7 +260,15 @@ const DEFAULT_TEMPLATES = [
 ];
 
 async function init() {
-  await pool.query(SCHEMA);
+  if (!pool) throw configError();
+  try {
+    await pool.query(SCHEMA);
+  } catch (e) {
+    const ce = new Error(`Cannot connect to the database: ${e.message}. Check DATABASE_URL in the Vercel settings.`);
+    ce.status = 503;
+    ce.expose = true;
+    throw ce;
+  }
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
     await db.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING', k, v);
   }

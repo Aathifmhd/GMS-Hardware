@@ -17,6 +17,12 @@ const err = L.httpError;
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const SESSION_EXPIRY = `to_char((now() + interval '12 hours') AT TIME ZONE '${TZ}', 'YYYY-MM-DD HH24:MI:SS')`;
 
+// Status check (no login): open /api/health to see whether the database is reachable
+app.get('/api/health', (req, res) => ready().then(
+  () => res.json({ ok: true, database: 'connected', timezone: TZ, cron_secret_set: !!process.env.CRON_SECRET }),
+  (e) => res.status(503).json({ ok: false, error: e.message }),
+));
+
 // make sure the schema exists before the first query of a cold start
 app.use('/api', (req, res, next) => ready().then(() => next(), next));
 
@@ -821,7 +827,7 @@ app.use((e, req, res, next) => {
   else if (e.code === '23503') { status = 400; msg = 'This record is linked to other records'; }
   else if (e.code === '22P02') { status = 400; msg = 'Invalid value'; }
   if (status >= 500) console.error(e);
-  res.status(status).json({ error: status >= 500 && process.env.VERCEL ? 'Server error — please try again' : msg });
+  res.status(status).json({ error: status >= 500 && process.env.VERCEL && !e.expose ? 'Server error — please try again' : msg });
 });
 
 module.exports = app;
