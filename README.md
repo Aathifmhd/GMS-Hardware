@@ -10,8 +10,9 @@ by Vite); see [Project layout](#project-layout).
 
 ## Set up Supabase
 
-1. Create a project at [supabase.com](https://supabase.com). Choose the **Singapore** region (next to the app's
-   Vercel region) and keep the database password.
+1. Create a project at [supabase.com](https://supabase.com) and keep the database password. The shop's project is
+   in **Tokyo** (`ap-northeast-1`), and `vercel.json` runs the API in Vercel's Tokyo region (`hnd1`) next to it.
+   If you create a project in another region, set `regions` in `vercel.json` to the nearest Vercel region.
 2. Click **Connect** and copy the **Transaction pooler** connection string (port 6543), with your database
    password in place of `[YOUR-PASSWORD]`. This is your `DATABASE_URL`.
    Don't use the **Direct connection** (`db.<project>.supabase.co`): it needs IPv6, which Vercel doesn't have.
@@ -61,7 +62,7 @@ on the same domain:
 - **backend** (`backend/`, Express): `backend/src/app.js` as a Vercel Function, for every `/api/...` request.
 
 The frontend only calls the backend from the browser through `/api/...`, so the services need no bindings.
-Functions run in the Singapore region (next to the Supabase database), and Vercel Cron calls `/api/cron` for
+Functions run in Vercel's Tokyo region (`hnd1`, next to the Supabase database), and Vercel Cron calls `/api/cron` for
 the daily job (interest, due reminders, overdue notices) at 01:00 Sri Lanka time. Managers can also run it any
 time from *Overdue & Follow-up → Run interest & reminders*.
 
