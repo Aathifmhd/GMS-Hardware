@@ -1,4 +1,5 @@
-// Run the credit manager on this computer: `npm start` → http://localhost:3000
+// Run the API on this computer: `npm start` → http://localhost:4000/api. `npm start` in the project
+// folder also starts the web app → http://localhost:3000, which forwards /api calls here.
 // (On Vercel, api/index.js serves the same app and Vercel Cron runs the daily job.)
 const app = require('./app');
 const { ready } = require('./db');
@@ -11,11 +12,12 @@ async function tick() {
   } catch (e) { console.error('[auto] failed', e.message); }
 }
 
-const PORT = Number(process.env.PORT) || 3000;
+// API_PORT rather than PORT: tools that start the web app on port 3000 often set PORT for it
+const PORT = Number(process.env.API_PORT) || 4000;
 ready()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`\n  GMS Hardware Credit Manager running → http://localhost:${PORT}\n`);
+      console.log(`\n  GMS Hardware API running → http://localhost:${PORT}/api\n`);
       tick();
       setInterval(tick, 60 * 60 * 1000);
     });

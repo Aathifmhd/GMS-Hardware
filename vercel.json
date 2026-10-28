@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "outputDirectory": "public",
+  "buildCommand": "npm run build",
+  "outputDirectory": "frontend/dist",
   "regions": ["sin1"],
   "functions": {
     "api/index.js": { "maxDuration": 60 }

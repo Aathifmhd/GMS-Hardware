@@ -1,6 +1,5 @@
-// GMS Hardware — Customer Credit Management System (Express API + static frontend)
+// GMS Hardware — Customer Credit Management System: the Express API (the web app is in frontend/)
 // Used by src/server.js (local) and api/index.js (Vercel).
-const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
 const { db, tx, ready, NOW, TZ, hashPassword, verifyPassword, getSettings, setSetting, audit } = require('./db');
@@ -9,7 +8,6 @@ const M = require('./messaging');
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
-app.use(express.static(path.join(__dirname, '..', 'public')));
 
 const ROLE_RANK = { staff: 1, manager: 2, owner: 3 };
 const err = L.httpError;

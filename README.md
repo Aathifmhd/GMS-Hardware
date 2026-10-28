@@ -5,34 +5,39 @@ limits and credit periods, automatic overdue interest, SMS / WhatsApp / Email me
 11 reports and confidential owner reports.
 
 Runs on **Vercel** (website) with a **Neon Postgres** database (data storage), and can also run on a shop PC.
+The code is split into a **backend** (Node.js + Express API) and a **frontend** (the web app, served and built
+by Vite); see [Project layout](#project-layout).
 
 ## Run on this PC
 
-Requirements: Node.js 22 or newer.
+Requirements: Node.js 24.
 
 ```bash
-npm install                 # first time only
-copy .env.example .env      # then put your Neon DATABASE_URL in .env
-npm run demo                # optional: sample areas, 42 customers, 10 months of history (empty database only)
-npm start                   # → http://localhost:3000
+npm install                                # first time only (installs the backend and the frontend)
+copy backend\.env.example backend\.env     # then put your Neon DATABASE_URL in backend\.env
+npm run demo                               # optional: sample areas, 42 customers, 10 months of history (empty database only)
+npm start                                  # → http://localhost:3000 (the API itself runs on http://localhost:4000)
 ```
 
-On Windows you can double-click **start.bat**.
+On Windows you can double-click **start.bat**. While changing the code, use `npm run dev` instead of `npm start`:
+the API then restarts by itself whenever a backend file changes.
 
 First login: `owner / owner123` (full access) or `staff / staff123`. **Change both passwords** (click your
 name at the bottom-left), or add your own users in *Users & Security*.
 
 ## Deploy to Vercel
 
-1. Push this folder to a GitHub repository (`.env` is git-ignored, so the password stays private).
-2. In Vercel: **Add New → Project → Import** the repository. Framework preset: **Other**; leave the build settings empty.
+1. Push this folder to a GitHub repository (`backend/.env` is git-ignored, so the password stays private).
+2. In Vercel: **Add New → Project → Import** the repository. Framework preset: **Other**; leave the build settings
+   empty (`vercel.json` builds the frontend and sets the output folder).
 3. Under **Environment Variables** add:
-   - `DATABASE_URL`: the Neon connection string (same as in `.env`)
+   - `DATABASE_URL`: the Neon connection string (same as in `backend/.env`)
    - `APP_TIMEZONE`: `Asia/Colombo`
    - `CRON_SECRET`: any long random text
 4. Click **Deploy**. Every later `git push` redeploys automatically.
 
-`vercel.json` runs the API in the Singapore region (next to the Neon database) and schedules the daily job
+`vercel.json` builds the frontend into `frontend/dist` (the website), runs the backend as one serverless function
+(`api/index.js`) in the Singapore region (next to the Neon database), and schedules the daily job
 (interest, due reminders, overdue notices) for 01:00 Sri Lanka time. Managers can also run it any time from
 *Overdue & Follow-up → Run interest & reminders*.
 
@@ -84,12 +89,21 @@ Neon also keeps restore history (console.neon.tech → your project → Restore)
 ## Project layout
 
 ```
-api/index.js      Vercel entry point (serves the Express app)
-src/app.js        API routes, reports, owner analytics
-src/db.js         Postgres pool, schema, seed data
-src/ledger.js     balances, FIFO allocation, interest engine
-src/messaging.js  SMS / WhatsApp / Email + automation
-src/server.js     local server (npm start)
-src/demo.js       sample data loader
-public/           the web app (HTML, CSS, JS)
+backend/                 the API: Node.js + Express + PostgreSQL (own package.json and .env)
+  src/app.js             API routes, reports, owner analytics
+  src/db.js              Postgres pool, schema, seed data
+  src/ledger.js          balances, FIFO allocation, interest engine
+  src/messaging.js       SMS / WhatsApp / Email + automation
+  src/server.js          local API server (port 4000)
+  src/demo.js            sample data loader
+frontend/                the web app: plain HTML, CSS and JavaScript (own package.json)
+  index.html             page shell
+  public/css, public/js  styles, app shell and one script per screen
+  public/vendor          Chart.js
+  vite.config.js         dev server on port 3000; forwards /api to the backend
+api/index.js             Vercel entry point (serves backend/src/app.js)
+vercel.json              Vercel build, API function, region and daily cron
+package.json             npm workspaces and the start / dev / build / demo scripts
 ```
+
+The frontend talks to the backend only through `/api/...` requests, so each side can be changed on its own.

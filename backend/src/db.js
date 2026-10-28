@@ -1,5 +1,5 @@
 // Postgres (Neon) database — connection pool, schema, seed data and small query helpers.
-// Works locally (DATABASE_URL in .env) and on Vercel serverless functions.
+// Works locally (DATABASE_URL in backend/.env) and on Vercel serverless functions.
 const crypto = require('crypto');
 const { AsyncLocalStorage } = require('node:async_hooks');
 const { Pool, types } = require('pg');
@@ -17,7 +17,7 @@ const DATABASE_URL = String(process.env.DATABASE_URL || '').trim().replace(/^DAT
 function configError() {
   const e = new Error(DATABASE_URL
     ? 'DATABASE_URL is not a valid postgresql:// connection string. Fix it in Vercel → Settings → Environment Variables, then redeploy.'
-    : 'DATABASE_URL is not set. Add your Neon connection string in Vercel → Settings → Environment Variables (or .env on this PC), then redeploy.');
+    : 'DATABASE_URL is not set. Add your Neon connection string in Vercel → Settings → Environment Variables (or backend/.env on this PC), then redeploy.');
   e.status = 503;
   e.expose = true;
   return e;
