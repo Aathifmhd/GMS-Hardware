@@ -36,10 +36,26 @@ app.get('/api/cron', h(async (req, res) => {
 }));
 
 // ---------- auth ----------
+// Slow down password guessing: an IP address with LOGIN_MAX_FAILS wrong passwords in the last
+// 15 minutes cannot log in until the oldest of them is 15 minutes old.
+const LOGIN_MAX_FAILS = 10;
+const LOGIN_WINDOW = `to_char((now() - interval '15 minutes') AT TIME ZONE '${TZ}', 'YYYY-MM-DD HH24:MI:SS')`;
+// Vercel overwrites x-forwarded-for with the caller's real address, so it cannot be spoofed there
+const clientIp = (req) => (process.env.VERCEL && String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()) || req.socket.remoteAddress || '';
+
 app.post('/api/auth/login', h(async (req, res) => {
   const { username, password } = req.body || {};
-  const u = await db.get('SELECT * FROM users WHERE lower(username) = lower(?) AND active = 1', String(username || ''));
-  if (!u || !verifyPassword(String(password || ''), u.password_hash)) return res.status(401).json({ error: 'Invalid username or password' });
+  const name = String(username || '');
+  const ip = clientIp(req);
+  const fails = (await db.get(`SELECT COUNT(*) AS c FROM login_failures WHERE ip = ? AND created_at > ${LOGIN_WINDOW}`, ip)).c;
+  if (fails >= LOGIN_MAX_FAILS) return res.status(429).json({ error: 'Too many wrong passwords. Please wait 15 minutes and try again.' });
+  const u = await db.get('SELECT * FROM users WHERE lower(username) = lower(?) AND active = 1', name);
+  if (!u || !verifyPassword(String(password || ''), u.password_hash)) {
+    await db.run(`DELETE FROM login_failures WHERE created_at <= ${LOGIN_WINDOW}`);
+    await db.run('INSERT INTO login_failures (ip, username) VALUES (?, ?)', ip, name.slice(0, 100));
+    return res.status(401).json({ error: 'Invalid username or password' });
+  }
+  await db.run('DELETE FROM login_failures WHERE ip = ? AND lower(username) = lower(?)', ip, name);
   const token = crypto.randomBytes(32).toString('hex');
   await db.run(`INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ${SESSION_EXPIRY})`, token, u.id);
   await db.run(`DELETE FROM sessions WHERE expires_at < ${NOW}`);
@@ -170,8 +186,10 @@ app.get('/api/credit-types', h(async (req, res) => {
 }));
 function ctFields(b) {
   if (!str(b.name)) throw err(400, 'Name is required');
+  const color = str(b.color) || '#2a78d6';
+  if (!/^#[0-9a-f]{6}$/i.test(color)) throw err(400, 'Colour must be a hex code like #2a78d6');
   return [str(b.name), str(b.description), numOr(b.default_limit, 0), Math.max(1, intOrNull(b.default_period_days) || 30),
-    b.interest_rate === '' || b.interest_rate == null ? null : numOr(b.interest_rate, null), str(b.color) || '#2a78d6'];
+    b.interest_rate === '' || b.interest_rate == null ? null : numOr(b.interest_rate, null), color];
 }
 app.post('/api/credit-types', role('manager'), h(async (req, res) => {
   const r = await db.get('INSERT INTO credit_types (name, description, default_limit, default_period_days, interest_rate, color) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
@@ -232,7 +250,12 @@ async function customerFields(b, existing) {
 }
 app.post('/api/customers', h(async (req, res) => {
   const b = req.body || {};
-  const f = await customerFields(b);
+  // Staff open accounts on the credit type's standard terms; custom limits and periods, interest-free
+  // accounts and opening balances need a manager, just like editing a customer
+  const staff = ROLE_RANK[req.user.role] < 2;
+  if (staff && numOr(b.opening_balance, 0) > 0) throw err(403, 'Only a manager or owner can enter an opening balance');
+  const f = await customerFields(staff ? { ...b, credit_limit: '', credit_period_days: '', interest_enabled: 1 } : b);
+  if (staff && !f.credit_type_id) throw err(400, 'Choose a credit type: new customers get its standard credit limit and period');
   const code = str(b.code) || (await nextCustomerCode());
   const cols = Object.keys(f);
   const r = await db.get(`INSERT INTO customers (code, ${cols.join(', ')}) VALUES (?, ${cols.map(() => '?').join(', ')}) RETURNING id`,

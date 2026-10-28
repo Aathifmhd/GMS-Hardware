@@ -328,7 +328,7 @@ R['credit-types'] = async (view) => {
   G.table(view.querySelector('#tb'), {
     rows: d.rows, csv: 'credit-types', search: false,
     columns: [
-      { key: 'name', label: 'Type', render: (r) => `<span class="badge"><span class="dot" style="color:${r.color}"></span>${G.esc(r.name)}</span>`, csv: (r) => r.name },
+      { key: 'name', label: 'Type', render: (r) => `<span class="badge"><span class="dot" style="color:${G.esc(r.color)}"></span>${G.esc(r.name)}</span>`, csv: (r) => r.name },
       { key: 'default_period_days', label: 'Period', align: 'right', render: (r) => `${r.default_period_days}d` },
       { key: 'customers', label: 'Customers', align: 'right', fmt: 'int', sum: true },
       { key: 'total_limit', label: 'Total limits', align: 'right', fmt: 'money', sum: true },

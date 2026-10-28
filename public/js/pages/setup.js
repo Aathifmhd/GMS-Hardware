@@ -244,7 +244,7 @@ G.pages.users = async (view) => {
       <div class="card"><div class="card-head"><h3>Roles</h3></div>
         <div class="list-item"><div class="icon-dot" style="color:var(--brand)">${G.icon('crown')}</div><div class="grow"><div class="title">Owner</div><div class="sub">Everything, including owner reports, settings, users, deleting customers and backups.</div></div></div>
         <div class="list-item"><div class="icon-dot" style="color:var(--s1)">${G.icon('shield')}</div><div class="grow"><div class="title">Manager</div><div class="sub">Edit customers, void entries, adjustments, approve over-limit credit, areas, credit types, templates.</div></div></div>
-        <div class="list-item"><div class="icon-dot" style="color:var(--s3)">${G.icon('user')}</div><div class="grow"><div class="title">Staff</div><div class="sub">Add customers, record credit sales and payments, send messages, view reports.</div></div></div>
+        <div class="list-item"><div class="icon-dot" style="color:var(--s3)">${G.icon('user')}</div><div class="grow"><div class="title">Staff</div><div class="sub">Add customers (on their credit type's standard terms), record credit sales and payments, send messages, view reports.</div></div></div>
       </div>
     </div>`;
   G.table(view.querySelector('#uBody'), {

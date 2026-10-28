@@ -74,7 +74,7 @@ stats and the full audit trail.
 
 - **Owner**: everything, incl. owner reports, settings, users, deleting customers and backups.
 - **Manager**: edit customers, void entries, adjustments, approve over-limit credit, areas, credit types, templates.
-- **Staff**: add customers, record credit sales & payments, send messages, view reports.
+- **Staff**: add customers (on their credit type's standard terms), record credit sales & payments, send messages, view reports.
 
 ## Data & backup
 

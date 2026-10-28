@@ -81,6 +81,15 @@ CREATE TABLE IF NOT EXISTS sessions (
   expires_at TEXT NOT NULL
 );
 
+-- Wrong-password attempts, used to slow down password guessing
+CREATE TABLE IF NOT EXISTS login_failures (
+  id SERIAL PRIMARY KEY,
+  ip TEXT NOT NULL,
+  username TEXT,
+  created_at TEXT NOT NULL DEFAULT ${NOW}
+);
+CREATE INDEX IF NOT EXISTS ix_login_failures ON login_failures (ip, created_at);
+
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
 
 CREATE TABLE IF NOT EXISTS areas (

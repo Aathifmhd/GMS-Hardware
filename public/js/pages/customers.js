@@ -36,7 +36,7 @@ G.pages.customers = async (view, query) => {
         { key: 'code', label: 'Code', render: (c) => `<span class="muted nowrap">${G.esc(c.code)}</span>` },
         { key: 'name', label: 'Customer', cls: 'wrap', render: (c) => `<b>${G.esc(c.name)}</b>${c.business_name ? `<div class="muted" style="font-size:12px">${G.esc(c.business_name)}</div>` : ''}`, csv: (c) => c.name },
         { key: 'area_name', label: 'Area' },
-        { key: 'type_name', label: 'Credit type', render: (c) => c.type_name ? `<span class="badge"><span class="dot" style="color:${c.type_color}"></span>${G.esc(c.type_name)}</span>` : '—', csv: (c) => c.type_name || '' },
+        { key: 'type_name', label: 'Credit type', render: (c) => c.type_name ? `<span class="badge"><span class="dot" style="color:${G.esc(c.type_color)}"></span>${G.esc(c.type_name)}</span>` : '—', csv: (c) => c.type_name || '' },
         { key: 'phone', label: 'Phone', render: (c) => `<span class="nowrap">${G.esc(c.phone || '—')}</span>` },
         { key: 'credit_limit', label: 'Limit', align: 'right', fmt: 'money' },
         { key: 'credit_period_days', label: 'Period', align: 'right', render: (c) => `${c.credit_period_days}d` },
@@ -98,6 +98,7 @@ G.customerForm = async (customer, onSaved) => {
   await G.loadLookups();
   const c = customer || { status: 'active', interest_enabled: 1, preferred_channel: 'sms' };
   const isNew = !customer;
+  const fixedTerms = !G.can('manager'); // staff: limit, period and interest come from the credit type
   const v = (k) => G.esc(c[k] ?? '');
   G.modal({
     title: isNew ? 'New credit customer' : `Edit ${G.esc(c.name)}`, size: 'wide',
@@ -114,13 +115,13 @@ G.customerForm = async (customer, onSaved) => {
 
       <div class="section-title">Area & credit terms</div>
       <div class="field"><label>Area *</label><div class="row" style="flex-wrap:nowrap"><select name="area_id" required>${G.areaOptions(c.area_id, '— Select area —')}</select><button type="button" class="btn sm" id="newArea" title="Add area">${G.icon('plus')}</button></div></div>
-      <div class="field"><label>Credit type</label><select name="credit_type_id" id="ctSel">${G.typeOptions(c.credit_type_id, '— None —')}</select><div class="help" id="ctHelp"></div></div>
+      <div class="field"><label>Credit type${fixedTerms ? ' *' : ''}</label><select name="credit_type_id" id="ctSel" ${fixedTerms ? 'required' : ''}>${G.typeOptions(c.credit_type_id, fixedTerms ? '— Select credit type —' : '— None —')}</select><div class="help" id="ctHelp"></div></div>
       <div class="field"><label>Status</label><select name="status">${['active', 'blocked', 'inactive'].map((s) => `<option value="${s}" ${c.status === s ? 'selected' : ''}>${s[0].toUpperCase() + s.slice(1)}</option>`).join('')}</select></div>
-      <div class="field"><label>Credit limit (${G.business.currency})</label><input name="credit_limit" type="number" min="0" step="0.01" value="${c.credit_limit ?? ''}" placeholder="From credit type"><div class="help">0 = no limit</div></div>
-      <div class="field"><label>Credit period (days)</label><input name="credit_period_days" type="number" min="0" value="${c.credit_period_days ?? ''}" placeholder="From credit type"><div class="help">Interest starts after this</div></div>
+      <div class="field"><label>Credit limit (${G.business.currency})</label><input name="credit_limit" type="number" min="0" step="0.01" value="${c.credit_limit ?? ''}" placeholder="From credit type" ${fixedTerms ? 'readonly' : ''}><div class="help">${fixedTerms ? 'From the credit type · a manager can change it' : '0 = no limit'}</div></div>
+      <div class="field"><label>Credit period (days)</label><input name="credit_period_days" type="number" min="0" value="${c.credit_period_days ?? ''}" placeholder="From credit type" ${fixedTerms ? 'readonly' : ''}><div class="help">Interest starts after this</div></div>
       <div class="field"><label>Preferred message channel</label><select name="preferred_channel">${['sms', 'whatsapp', 'email'].map((s) => `<option value="${s}" ${c.preferred_channel === s ? 'selected' : ''}>${{ sms: 'SMS', whatsapp: 'WhatsApp', email: 'Email' }[s]}</option>`).join('')}</select></div>
-      <div class="field full"><label class="check"><input type="checkbox" name="interest_enabled" ${c.interest_enabled ? 'checked' : ''}> Charge overdue interest for this customer</label></div>
-      ${isNew ? `<div class="section-title">Opening balance (optional)</div>
+      <div class="field full"><label class="check"><input type="checkbox" name="interest_enabled" ${c.interest_enabled ? 'checked' : ''} ${fixedTerms ? 'disabled' : ''}> Charge overdue interest for this customer</label></div>
+      ${isNew && !fixedTerms ? `<div class="section-title">Opening balance (optional)</div>
       <div class="field"><label>Existing balance owed</label><input name="opening_balance" type="number" min="0" step="0.01" placeholder="0.00"></div>
       <div class="field"><label>Balance date</label><input name="opening_date" type="date" value="${G.today()}"></div>
       <div class="field"><label>Due date</label><input name="opening_due_date" type="date"><div class="help">Empty = date + credit period</div></div>` : ''}
