@@ -1,14 +1,20 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "buildCommand": "npm run build",
-  "outputDirectory": "frontend/dist",
   "regions": ["sin1"],
-  "functions": {
-    "api/index.js": { "maxDuration": 60 }
+  "services": {
+    "backend": {
+      "root": "backend",
+      "framework": "express",
+      "entrypoint": "src/app.js"
+    },
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite"
+    }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" }
+    { "source": "/api/(.*)", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
   ],
   "crons": [
     { "path": "/api/cron", "schedule": "30 19 * * *" }

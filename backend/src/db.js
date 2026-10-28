@@ -1,4 +1,4 @@
-// Postgres (Neon) database — connection pool, schema, seed data and small query helpers.
+// Postgres database (Supabase, or any other Postgres) — connection pool, schema, seed data and small query helpers.
 // Works locally (DATABASE_URL in backend/.env) and on Vercel serverless functions.
 const crypto = require('crypto');
 const { AsyncLocalStorage } = require('node:async_hooks');
@@ -11,22 +11,35 @@ const TZ = /^[A-Za-z_]+\/[A-Za-z_\/+-]+$/.test(process.env.APP_TIMEZONE || '') ?
 // Local "now" as 'YYYY-MM-DD HH24:MI:SS' text in the shop's timezone (server clocks are UTC on Vercel)
 const NOW = `to_char(now() AT TIME ZONE '${TZ}', 'YYYY-MM-DD HH24:MI:SS')`;
 
-// Tolerate common paste mistakes in the dashboard: surrounding quotes/spaces or a leading "DATABASE_URL="
-const DATABASE_URL = String(process.env.DATABASE_URL || '').trim().replace(/^DATABASE_URL=/, '').replace(/^["']|["']$/g, '').trim();
+// DATABASE_URL, or POSTGRES_URL as set by Vercel's Supabase integration. Tolerate common paste mistakes
+// in the dashboard: surrounding quotes/spaces or a leading "DATABASE_URL="
+const DATABASE_URL = String(process.env.DATABASE_URL || process.env.POSTGRES_URL || '').trim()
+  .replace(/^(DATABASE|POSTGRES)_URL=/, '').replace(/^["']|["']$/g, '').trim();
 
 function configError() {
   const e = new Error(DATABASE_URL
     ? 'DATABASE_URL is not a valid postgresql:// connection string. Fix it in Vercel → Settings → Environment Variables, then redeploy.'
-    : 'DATABASE_URL is not set. Add your Neon connection string in Vercel → Settings → Environment Variables (or backend/.env on this PC), then redeploy.');
+    : 'DATABASE_URL is not set. Add your Supabase connection string (Supabase → Connect → Transaction pooler) in Vercel → Settings → Environment Variables (or backend/.env on this PC), then redeploy.');
   e.status = 503;
   e.expose = true;
   return e;
 }
 
+// Supabase signs its database certificates with its own CA, which Node does not trust, so for Supabase
+// hosts the URL's sslmode is replaced: the server is verified when DATABASE_CA_CERT holds Supabase's
+// certificate (Database settings → SSL Configuration → Download certificate), otherwise the connection
+// is encrypted without verifying the server (Supabase's sslmode=require). Other hosts keep their sslmode.
+function connectionConfig(url) {
+  const config = { connectionString: url, max: process.env.VERCEL ? 5 : 10, idleTimeoutMillis: 10000 };
+  const u = new URL(url);
+  if (!/\.supabase\.(co|com)$/i.test(u.hostname)) return config;
+  for (const k of ['sslmode', 'sslrootcert', 'uselibpqcompat']) u.searchParams.delete(k);
+  const ca = String(process.env.DATABASE_CA_CERT || '').replace(/\\n/g, '\n').trim();
+  return { ...config, connectionString: u.href, ssl: ca ? { ca } : { rejectUnauthorized: false } };
+}
+
 // Created without a valid URL the app still starts, so every request can report what is wrong
-const pool = /^postgres(ql)?:\/\//.test(DATABASE_URL)
-  ? new Pool({ connectionString: DATABASE_URL, max: process.env.VERCEL ? 5 : 10, idleTimeoutMillis: 10000 })
-  : null;
+const pool = /^postgres(ql)?:\/\//.test(DATABASE_URL) && URL.canParse(DATABASE_URL) ? new Pool(connectionConfig(DATABASE_URL)) : null;
 const txStore = new AsyncLocalStorage();
 
 // '?' placeholders → $1, $2 … so queries read the same as before
@@ -196,6 +209,21 @@ CREATE TABLE IF NOT EXISTS audit_log (
   details TEXT,
   created_at TEXT NOT NULL DEFAULT ${NOW}
 );
+
+-- Supabase also publishes the public schema through its Data API. Row level security with no policies
+-- closes that door; the app connects as the tables' owner, which row level security does not restrict.
+-- Only tables without it are altered, so later starts take no table locks.
+DO $$
+DECLARE t regclass;
+BEGIN
+  FOR t IN SELECT c.oid::regclass FROM pg_class c
+    WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND NOT c.relrowsecurity
+      AND c.relname IN ('users', 'sessions', 'login_failures', 'settings', 'areas', 'credit_types', 'customers',
+        'transactions', 'allocations', 'templates', 'messages', 'audit_log')
+  LOOP
+    EXECUTE format('ALTER TABLE %s ENABLE ROW LEVEL SECURITY', t);
+  END LOOP;
+END $$;
 `;
 
 // ---------- helpers ----------
@@ -273,7 +301,11 @@ async function init() {
   try {
     await pool.query(SCHEMA);
   } catch (e) {
-    const ce = new Error(`Cannot connect to the database: ${e.message}. Check DATABASE_URL in the Vercel settings.`);
+    // Supabase's direct address (db.<project>.supabase.co) is IPv6-only, which Vercel cannot reach
+    const hint = /^db\.[^.]+\.supabase\.co$/i.test(new URL(DATABASE_URL).hostname)
+      ? 'Supabase\'s direct connection needs IPv6, which Vercel does not have: use the "Transaction pooler" connection string from Supabase → Connect.'
+      : 'Check DATABASE_URL in the Vercel settings.';
+    const ce = new Error(`Cannot connect to the database: ${e.message}. ${hint}`);
     ce.status = 503;
     ce.expose = true;
     throw ce;
@@ -313,4 +345,4 @@ async function audit(userId, action, entity, entityId, details) {
     userId ?? null, action, entity ?? null, entityId ?? null, details ? String(details) : null);
 }
 
-module.exports = { db, pool, tx, ready, NOW, TZ, hashPassword, verifyPassword, getSettings, setSetting, audit };
+module.exports = { db, pool, tx, ready, NOW, TZ, connectionConfig, hashPassword, verifyPassword, getSettings, setSetting, audit };

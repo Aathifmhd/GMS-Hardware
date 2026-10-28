@@ -1,5 +1,5 @@
 // GMS Hardware — Customer Credit Management System: the Express API (the web app is in frontend/)
-// Used by src/server.js (local) and api/index.js (Vercel).
+// Used by src/server.js (local) and by Vercel, which runs this file as the "backend" service (vercel.json).
 const crypto = require('crypto');
 const express = require('express');
 const { db, tx, ready, NOW, TZ, hashPassword, verifyPassword, getSettings, setSetting, audit } = require('./db');

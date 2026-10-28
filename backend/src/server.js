@@ -1,6 +1,6 @@
 // Run the API on this computer: `npm start` → http://localhost:4000/api. `npm start` in the project
 // folder also starts the web app → http://localhost:3000, which forwards /api calls here.
-// (On Vercel, api/index.js serves the same app and Vercel Cron runs the daily job.)
+// (On Vercel the "backend" service runs src/app.js directly and Vercel Cron runs the daily job.)
 const app = require('./app');
 const { ready } = require('./db');
 const M = require('./messaging');

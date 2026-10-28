@@ -8,7 +8,8 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env src/server.js",
     "dev": "node --watch --env-file-if-exists=.env src/server.js",
-    "demo": "node --env-file-if-exists=.env src/demo.js"
+    "demo": "node --env-file-if-exists=.env src/demo.js",
+    "copy-db": "node --env-file-if-exists=.env src/copy-db.js"
   },
   "license": "ISC",
   "dependencies": {

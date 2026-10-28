@@ -176,7 +176,7 @@ G.pages.settings = async (view) => {
 
     <div class="card hidden" data-p="backup"><div class="card-head"><div><h3>Backup</h3><div class="sub">Download a full copy of the database. Keep backups on a USB drive or cloud storage.</div></div></div>
       <button class="btn primary" id="bkBtn">${G.icon('database')} Download backup now</button>
-      <p class="muted">The file is a JSON export of every table (passwords excluded) that can be opened in any text editor. Neon also keeps its own restore history: open your project at console.neon.tech → Restore.</p></div>`;
+      <p class="muted">The file is a JSON export of every table (passwords excluded) that can be opened in any text editor. Supabase also keeps backups of the database, depending on your plan: Supabase dashboard → Database → Backups.</p></div>`;
 
   function testBox(channel, label) {
     return `<div class="row mt" style="align-items:flex-end;border-top:1px solid var(--border);padding-top:14px">
