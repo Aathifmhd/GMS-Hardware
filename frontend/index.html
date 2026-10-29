@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GMS Hardware · Credit Manager</title>
+  <title>GMS Hardware · Credit Managing System</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%23f59e0b'/><text x='32' y='43' font-size='30' font-family='Arial' font-weight='900' text-anchor='middle' fill='%230b1020'>G</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,14 +15,21 @@
 
   <!-- Login -->
   <section id="login" class="login hidden">
-    <form id="loginForm" class="login-card">
-      <div class="brand-mark big">G</div>
-      <h1>GMS Hardware</h1>
-      <p class="muted">Customer Credit Management</p>
-      <label>Username<input name="username" autocomplete="username" required autofocus></label>
-      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
-      <button class="btn primary block" type="submit">Sign in</button>
-    </form>
+    <div class="login-shell">
+      <div class="login-side">
+        <div class="brand-mark big">G</div>
+        <h1>GMS Hardware</h1>
+        <p>Credit Managing System</p>
+        <div class="brand-by">by <b>Zenatiq Solutions</b></div>
+      </div>
+      <form id="loginForm" class="login-card">
+        <h2>Sign in</h2>
+        <p class="muted">Welcome back. Sign in to manage customer credit.</p>
+        <label>Username<input name="username" autocomplete="username" required autofocus></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="btn primary block" type="submit">Sign in</button>
+      </form>
+    </div>
   </section>
 
   <!-- App -->
@@ -30,7 +37,11 @@
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-mark">G</div>
-        <div><div class="brand-name" id="brandName">GMS Hardware</div><div class="brand-sub">Credit Manager</div></div>
+        <div class="brand-text">
+          <div class="brand-name" id="brandName">GMS Hardware</div>
+          <div class="brand-sub">Credit Managing System</div>
+          <div class="brand-by">by <b>Zenatiq Solutions</b></div>
+        </div>
       </div>
       <nav id="nav"></nav>
       <div class="side-foot">

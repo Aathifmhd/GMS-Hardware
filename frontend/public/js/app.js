@@ -40,7 +40,7 @@
     $('nav').innerHTML = NAV.filter((n) => !n[3] || G.can(n[3])).map((n) =>
       n.length === 1 ? `<div class="nav-group">${n[0]}</div>`
         : `<a class="nav-link" href="${n[0]}">${G.icon(n[2])}<span>${n[1]}</span>${n[4] ? `<span class="nav-badge hidden" id="${n[4]}"></span>` : ''}</a>`).join('');
-    $('userChip').innerHTML = `<div class="avatar">${G.initials(G.user.full_name)}</div><div style="min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${G.esc(G.user.full_name)}</div><div class="role-pill">${G.user.role}</div></div>`;
+    $('userChip').innerHTML = `<div class="avatar">${G.initials(G.user.full_name)}</div><div class="user-text"><div class="user-name">${G.esc(G.user.full_name)}</div><div class="role-pill">${G.user.role}</div></div>`;
     $('brandName').textContent = G.business.name;
   }
 
