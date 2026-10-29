@@ -45,7 +45,15 @@
       </div>
       <nav id="nav"></nav>
       <div class="side-foot">
-        <div class="user-chip" id="userChip"></div>
+        <div class="user-menu hidden" id="userMenu" role="menu">
+          <div class="theme-switch" role="radiogroup" aria-label="Theme">
+            <button type="button" role="radio" data-theme-set="light"></button>
+            <button type="button" role="radio" data-theme-set="dark"></button>
+          </div>
+          <a class="um-item" href="#/settings/account" role="menuitem" id="accountLink"></a>
+          <button type="button" class="um-item danger" role="menuitem" id="logoutItem"></button>
+        </div>
+        <div class="user-chip" id="userChip" role="button" tabindex="0" aria-haspopup="menu" aria-controls="userMenu" aria-expanded="false"></div>
       </div>
     </aside>
     <div class="sidebar-scrim" id="scrim"></div>
@@ -60,8 +68,6 @@
         <div class="top-actions">
           <button class="btn primary sm" id="quickCredit"></button>
           <button class="btn success sm" id="quickPay"></button>
-          <button class="icon-btn" id="themeBtn" aria-label="Toggle theme"></button>
-          <button class="icon-btn" id="logoutBtn" aria-label="Log out"></button>
         </div>
       </header>
       <div id="view" class="view"></div>

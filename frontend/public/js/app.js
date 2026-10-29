@@ -14,7 +14,7 @@
     ['Setup'],
     ['#/areas', 'Areas', 'map'],
     ['#/credit-types', 'Credit Types', 'tag'],
-    ['#/settings', 'Settings', 'settings', 'manager'],
+    ['#/settings', 'Settings', 'settings'],
     ['#/users', 'Users & Security', 'shield', 'owner'],
   ];
 
@@ -30,7 +30,7 @@
     [/^#\/owner$/, 'owner'],
     [/^#\/areas$/, 'areas'],
     [/^#\/credit-types$/, 'creditTypes'],
-    [/^#\/settings$/, 'settings'],
+    [/^#\/settings(?:\/([\w-]+))?$/, 'settings'],
     [/^#\/users$/, 'users'],
   ];
 
@@ -40,9 +40,14 @@
     $('nav').innerHTML = NAV.filter((n) => !n[3] || G.can(n[3])).map((n) =>
       n.length === 1 ? `<div class="nav-group">${n[0]}</div>`
         : `<a class="nav-link" href="${n[0]}">${G.icon(n[2])}<span>${n[1]}</span>${n[4] ? `<span class="nav-badge hidden" id="${n[4]}"></span>` : ''}</a>`).join('');
-    $('userChip').innerHTML = `<div class="avatar">${G.initials(G.user.full_name)}</div><div class="user-text"><div class="user-name">${G.esc(G.user.full_name)}</div><div class="role-pill">${G.user.role}</div></div>`;
+    renderUser();
+  }
+  // the account button and the business name in the menu bar (redrawn after My account or business details change)
+  function renderUser() {
+    $('userChip').innerHTML = `<div class="avatar">${G.initials(G.user.full_name)}</div><div class="user-text"><div class="user-name">${G.esc(G.user.full_name)}</div><div class="role-pill">${G.user.role}</div></div>${G.icon('settings', 'uc-icon')}`;
     $('brandName').textContent = G.business.name;
   }
+  G.renderUser = renderUser;
 
   async function route() {
     const hash = location.hash || '#/dashboard';
@@ -125,24 +130,47 @@
 
   // ---------- topbar ----------
   $('menuBtn').innerHTML = G.icon('menu');
-  $('logoutBtn').innerHTML = G.icon('logout');
   $('quickCredit').innerHTML = `${G.icon('receipt')}<span class="lbl">Credit Sale</span>`;
   $('quickPay').innerHTML = `${G.icon('cash')}<span class="lbl">Payment</span>`;
-  const setThemeIcon = () => ($('themeBtn').innerHTML = G.icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon'));
-  setThemeIcon();
-  $('themeBtn').onclick = () => {
-    const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = t;
-    try { localStorage.setItem('gms-theme', t); } catch (e) { /* ignore */ }
-    setThemeIcon();
-    route();
-  };
-  $('logoutBtn').onclick = () => G.logout();
   $('menuBtn').onclick = () => { $('sidebar').classList.add('open'); $('scrim').classList.add('open'); };
   $('scrim').onclick = () => { $('sidebar').classList.remove('open'); $('scrim').classList.remove('open'); };
   $('quickCredit').onclick = () => G.entryModal('credit');
   $('quickPay').onclick = () => G.entryModal('payment');
-  $('userChip').onclick = () => G.passwordModal();
+
+  // ---------- account menu: the account button at the foot of the menu bar ----------
+  const userMenu = $('userMenu'), chip = $('userChip');
+  const syncTheme = () => userMenu.querySelectorAll('[data-theme-set]').forEach((b) => {
+    const on = b.dataset.themeSet === document.documentElement.dataset.theme;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-checked', on);
+  });
+  G.setTheme = (t) => {
+    document.documentElement.dataset.theme = t;
+    try { localStorage.setItem('gms-theme', t); } catch (e) { /* ignore */ }
+    syncTheme();
+    route(); // redraw the charts in the new colours
+  };
+  const openMenu = (open) => {
+    userMenu.classList.toggle('hidden', !open);
+    chip.setAttribute('aria-expanded', open);
+    $('sidebar').classList.toggle('menu-open', open); // keeps the menu bar unfolded while the account menu shows
+  };
+  userMenu.querySelector('[data-theme-set="light"]').innerHTML = `${G.icon('sun')} Light`;
+  userMenu.querySelector('[data-theme-set="dark"]').innerHTML = `${G.icon('moon')} Dark`;
+  $('accountLink').innerHTML = `${G.icon('user')} Account settings`;
+  $('logoutItem').innerHTML = `${G.icon('logout')} Log out`;
+  syncTheme();
+  chip.onclick = () => openMenu(userMenu.classList.contains('hidden'));
+  chip.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chip.click(); } };
+  userMenu.onclick = (e) => {
+    const t = e.target.closest('[data-theme-set]');
+    if (t) return G.setTheme(t.dataset.themeSet);
+    if (e.target.closest('#accountLink')) openMenu(false);
+    if (e.target.closest('#logoutItem')) { openMenu(false); G.logout(); }
+  };
+  document.addEventListener('click', (e) => { if (!e.target.closest('.side-foot')) openMenu(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') openMenu(false); });
+  $('sidebar').addEventListener('mouseleave', () => openMenu(false)); // the menu bar folds back to icons
 
   // global customer search
   const gs = $('globalSearch'), sr = $('searchResults');
@@ -175,21 +203,6 @@
   document.addEventListener('click', (e) => { if (!e.target.closest('.top-search')) sr.classList.remove('open'); });
   document.addEventListener('keydown', (e) => {
     if (e.key === '/' && !e.target.closest('input,textarea,select')) { e.preventDefault(); gs.focus(); }
-  });
-
-  G.passwordModal = () => G.modal({
-    title: 'My account', size: 'narrow',
-    body: `<p class="muted" style="margin-top:0">${G.esc(G.user.full_name)} · ${G.user.username} · <b>${G.user.role}</b></p>
-      <form id="pwForm" class="grid"><div class="field"><label>Current password</label><input type="password" name="current" required></div>
-      <div class="field"><label>New password</label><input type="password" name="next" minlength="6" required></div></form>`,
-    foot: '<button class="btn" data-close>Close</button><button class="btn primary" id="pwSave">Change password</button>',
-    onMount: (m) => {
-      m.el.querySelector('#pwSave').onclick = async () => {
-        const f = m.el.querySelector('#pwForm');
-        if (!f.reportValidity()) return;
-        try { await G.post('/api/auth/password', G.formData(f)); G.toast('Password changed'); m.close(); } catch (e) { G.fail(e); }
-      };
-    },
   });
 
   window.addEventListener('hashchange', route);

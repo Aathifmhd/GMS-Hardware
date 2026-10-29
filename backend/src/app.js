@@ -68,7 +68,7 @@ app.use('/api', h(async (req, res, next) => {
   const row = await db.get(`SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
     WHERE s.token = ? AND s.expires_at > ${NOW} AND u.active = 1`, token);
   if (!row) return res.status(401).json({ error: 'Session expired' });
-  req.user = { id: row.id, username: row.username, full_name: row.full_name, role: row.role };
+  req.user = { id: row.id, username: row.username, full_name: row.full_name, role: row.role, phone: row.phone };
   next();
 }));
 const role = (min) => (req, res, next) =>
@@ -89,6 +89,14 @@ app.post('/api/auth/password', h(async (req, res) => {
   if (!nw || String(nw).length < 6) throw err(400, 'New password must be at least 6 characters');
   await db.run('UPDATE users SET password_hash = ? WHERE id = ?', hashPassword(String(nw)), u.id);
   await audit(u.id, 'change_password', 'user', u.id);
+  res.json({ ok: true });
+}));
+// Everyone can change their own name and phone (Settings → My account); roles stay with the owner
+app.put('/api/auth/profile', h(async (req, res) => {
+  const b = req.body || {};
+  if (!str(b.full_name)) throw err(400, 'Full name is required');
+  await db.run('UPDATE users SET full_name = ?, phone = ? WHERE id = ?', str(b.full_name), str(b.phone), req.user.id);
+  await audit(req.user.id, 'update', 'user', req.user.id, 'own name and phone');
   res.json({ ok: true });
 }));
 
